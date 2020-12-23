@@ -165,16 +165,6 @@ func (l *Logger) SetDebug(d bool) {
 	l.stackTrace(stackTraceLevel)
 }
 
-func (l *Logger) stackTrace(lvl zapcore.Level) {
-	if l.disableStackTrace {
-		return
-	}
-
-	l.m.Lock()
-	l.SugaredLogger = l.Get().Desugar().WithOptions(zap.AddStacktrace(lvl)).Sugar()
-	l.m.Unlock()
-}
-
 // Disable disables (nearly) all output.
 func (l *Logger) Disable() {
 	l.m.Lock()
@@ -194,6 +184,16 @@ func (l *Logger) SetLevel(level zapcore.Level) {
 // Get returns the embedded zap.Logger
 func (l *Logger) Get() *zap.SugaredLogger {
 	return l.SugaredLogger
+}
+
+func (l *Logger) stackTrace(lvl zapcore.Level) {
+	if l.disableStackTrace {
+		return
+	}
+
+	l.m.Lock()
+	l.SugaredLogger = l.Get().Desugar().WithOptions(zap.AddStacktrace(lvl)).Sugar()
+	l.m.Unlock()
 }
 
 type config struct {
