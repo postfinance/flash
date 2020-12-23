@@ -101,6 +101,20 @@ func TestSetDebugWithStacktrace(t *testing.T) {
 	assert.True(t, sink.containsStackTrace(), "stack trace detected")
 }
 
+func TestDisable(t *testing.T) {
+	defer sink.Reset()
+
+	l := flash.New(flash.WithSink("memory://"))
+	l.Info("info")
+	assert.NotEmpty(t, sink.String(), 0)
+	sink.Reset()
+	l.Disable()
+	l.Debug("debug")
+	l.Info("info")
+	l.Error("error")
+	assert.Empty(t, sink.String(), 0)
+}
+
 func TestWithPrometheus(t *testing.T) {
 	defer sink.Reset()
 
