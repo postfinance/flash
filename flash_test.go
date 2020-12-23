@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tj/assert"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // nolint: gochecknoglobals
@@ -99,6 +100,12 @@ func TestSetDebugWithStacktrace(t *testing.T) {
 	assert.NotEmpty(t, sink.String(), "no debug message logged")
 	l.Error("error")
 	assert.True(t, sink.containsStackTrace(), "stack trace detected")
+	sink.Reset()
+	l.SetDebug(false)
+	l.Debug("debug")
+	assert.Empty(t, sink.String())
+	l.Error("error")
+	assert.False(t, sink.containsStackTrace())
 }
 
 func TestDisable(t *testing.T) {
@@ -113,6 +120,17 @@ func TestDisable(t *testing.T) {
 	l.Info("info")
 	l.Error("error")
 	assert.Empty(t, sink.String(), 0)
+}
+
+func TestSetLeve(t *testing.T) {
+	defer sink.Reset()
+
+	l := flash.New(flash.WithSink("memory://"))
+	l.Debug("debug")
+	assert.Empty(t, sink.String(), 0)
+	l.SetLevel(zapcore.DebugLevel)
+	l.Debug("debug")
+	assert.NotEmpty(t, sink.String(), 0)
 }
 
 func TestWithPrometheus(t *testing.T) {
