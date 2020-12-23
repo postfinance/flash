@@ -52,7 +52,8 @@ func WithDebug(debug bool) Option {
 }
 
 // WithStacktrace completely enables automatic stacktrace capturing. Stacktraces
-// are captured ErrorLevel and above in production.
+// are captured on ErrorLevel and above when in debug mode. When not in debug mode,
+// only FatalLevel messages contain stacktraces.
 func WithStacktrace() Option {
 	return func(c *config) {
 		c.disableStacktrace = false
@@ -81,7 +82,8 @@ func WithPrometheus(appName string, registry prometheus.Registerer) Option {
 	}
 }
 
-// New creates a new Logger.
+// New creates a new Logger. If no options are specified, stacktraces and color output are disabled and
+// the confgured level is `info`.
 func New(opts ...Option) *Logger {
 	l := zap.New(nil) // noop logger
 	atom := zap.NewAtomicLevelAt(zap.InfoLevel)
