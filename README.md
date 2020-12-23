@@ -3,4 +3,71 @@
 [![Build Status](https://github.com/postfinance/flash/workflows/build/badge.svg)](https://github.com/postfinance/flash/actions)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/postfinance/flash)](https://pkg.go.dev/github.com/postfinance/flash)
 # flash
-Create opinionated zap logger.
+Creates an opinionated zap logger.
+
+## Logger Without Stacktrace
+### New Logger
+> Debug / Info / Error
+```
+2020-10-09T09:29:06.363+0200    INFO    test/main.go:26 message {"StackTrace": "off", "debug": false}
+2020-10-09T09:29:06.364+0200    ERROR   test/main.go:27 message {"StackTrace": "off", "debug": false}
+```
+
+### Enable Debug
+> Debug / Info / Error
+```
+2020-10-09T09:29:06.364+0200    DEBUG   test/main.go:33 message {"StackTrace": "off", "debug": true}
+2020-10-09T09:29:06.364+0200    INFO    test/main.go:34 message {"StackTrace": "off", "debug": true}
+2020-10-09T09:29:06.364+0200    ERROR   test/main.go:35 message {"StackTrace": "off", "debug": true}
+```
+
+### Disable Debug
+> Debug / Info / Error
+```
+2020-10-09T09:29:06.364+0200    INFO    test/main.go:42 message {"StackTrace": "off", "debug": false}
+2020-10-09T09:29:06.364+0200    ERROR   test/main.go:43 message {"StackTrace": "off", "debug": false}
+```
+
+> Fatal
+```
+2020-10-09T09:29:06.364+0200    FATAL   test/main.go:47 message {"StackTrace": "on", "debug": false}
+exit status 1
+```
+
+## Logger With Stacktrace
+### New Logger
+> Debug / Info / Error
+```
+2020-10-09T09:29:11.889+0200    INFO    test/main.go:26 message {"StackTrace": "off", "debug": false}
+2020-10-09T09:29:11.889+0200    ERROR   test/main.go:27 message {"StackTrace": "off", "debug": false}
+```
+
+### Enable Debug (Stacktrace on Error or above)
+> Debug / Info / Error
+```
+2020-10-09T09:29:11.889+0200    DEBUG   test/main.go:33 message {"StackTrace": "off", "debug": true}
+2020-10-09T09:29:11.889+0200    INFO    test/main.go:34 message {"StackTrace": "off", "debug": true}
+2020-10-09T09:29:11.889+0200    ERROR   test/main.go:35 message {"StackTrace": "off", "debug": true}
+main.main
+        /export/home/sauterm/tmp/test/main.go:35
+runtime.main
+        /export/home/sauterm/.gimme/versions/go1.15.2.linux.amd64/src/runtime/proc.go:204
+```
+
+###  Disable Debug (Stacktrace on Fatal only)
+> Debug / Info / Error
+```
+2020-10-09T09:29:11.889+0200    INFO    test/main.go:42 message {"StackTrace": "off", "debug": false}
+2020-10-09T09:29:11.889+0200    ERROR   test/main.go:43 message {"StackTrace": "off", "debug": false}
+```
+
+> Fatal
+```
+2020-10-09T09:29:11.889+0200    FATAL   test/main.go:47 message {"StackTrace": "on", "debug": false}
+main.main
+        /export/home/sauterm/tmp/test/main.go:47
+runtime.main
+        /export/home/sauterm/.gimme/versions/go1.15.2.linux.amd64/src/runtime/proc.go:204
+exit status 1
+```
+
