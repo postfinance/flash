@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// Logger is the flash logger which embeds a zap.SugaredLogger.
+// Logger is the flash logger which embeds a `zap.SugaredLogger`.
 type Logger struct {
 	*zap.SugaredLogger
 	atom              zap.AtomicLevel
@@ -37,14 +37,14 @@ func WithoutCaller() Option {
 	}
 }
 
-// WithSink changes the default zap stderr sink.
+// WithSink changes the default zap `stderr` sink.
 func WithSink(name string) Option {
 	return func(c *config) {
 		c.sink = name
 	}
 }
 
-// WithDebug enables or disables debug log level.
+// WithDebug enables or disables `DebugLevel`.
 func WithDebug(debug bool) Option {
 	return func(c *config) {
 		c.isDebug = debug
@@ -52,8 +52,8 @@ func WithDebug(debug bool) Option {
 }
 
 // WithStacktrace completely enables automatic stacktrace capturing. Stacktraces
-// are captured on ErrorLevel and above when in debug mode. When not in debug mode,
-// only FatalLevel messages contain stacktraces.
+// are captured on `ErrorLevel` and above when in debug mode. When not in debug mode,
+// only `FatalLevel` messages contain stacktraces.
 func WithStacktrace() Option {
 	return func(c *config) {
 		c.disableStacktrace = false
@@ -83,7 +83,7 @@ func WithPrometheus(appName string, registry prometheus.Registerer) Option {
 }
 
 // New creates a new Logger. If no options are specified, stacktraces and color output are disabled and
-// the confgured level is `info`.
+// the confgured level is `InfoLevel`.
 func New(opts ...Option) *Logger {
 	l := zap.New(nil) // noop logger
 	atom := zap.NewAtomicLevelAt(zap.InfoLevel)
@@ -148,7 +148,7 @@ func New(opts ...Option) *Logger {
 	}
 }
 
-// SetDebug enables or disables debug level.
+// SetDebug enables or disables `DebugLevel`.
 func (l *Logger) SetDebug(d bool) {
 	level := zap.DebugLevel
 	stackTraceLevel := zap.ErrorLevel
@@ -165,7 +165,7 @@ func (l *Logger) SetDebug(d bool) {
 	l.stackTrace(stackTraceLevel)
 }
 
-// Disable disables (nearly) all output. Only fatal errors are logged.
+// Disable disables (nearly) all output. Only `FatalLevel` errors are logged.
 func (l *Logger) Disable() {
 	l.m.Lock()
 	l.currentLevel = zapcore.FatalLevel
@@ -173,7 +173,7 @@ func (l *Logger) Disable() {
 	l.atom.SetLevel(zap.FatalLevel)
 }
 
-// SetLevel sets the chosen level.
+// SetLevel sets the chosen level. If stacktraces are enabled, it adjusts stacktrace levels accordingly.
 func (l *Logger) SetLevel(level zapcore.Level) {
 	l.m.Lock()
 	oldLevel := l.currentLevel
