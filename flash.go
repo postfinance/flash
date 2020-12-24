@@ -176,9 +176,19 @@ func (l *Logger) Disable() {
 // SetLevel sets the chosen level.
 func (l *Logger) SetLevel(level zapcore.Level) {
 	l.m.Lock()
+	oldLevel := l.currentLevel
 	l.currentLevel = level
 	l.m.Unlock()
 	l.atom.SetLevel(level)
+
+	if level == zap.DebugLevel {
+		l.stackTrace(zap.ErrorLevel)
+		return
+	}
+
+	if oldLevel == zap.DebugLevel && level != zap.DebugLevel {
+		l.stackTrace(zap.FatalLevel)
+	}
 }
 
 // Get returns the embedded zap.Logger

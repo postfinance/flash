@@ -122,15 +122,24 @@ func TestDisable(t *testing.T) {
 	assert.Empty(t, sink.String(), 0)
 }
 
-func TestSetLeve(t *testing.T) {
+func TestSetLevelWithStacktrace(t *testing.T) {
 	defer sink.Reset()
 
-	l := flash.New(flash.WithSink("memory://"))
+	l := flash.New(flash.WithSink("memory://"), flash.WithStacktrace())
 	l.Debug("debug")
 	assert.Empty(t, sink.String(), 0)
+	l.Error("error")
+	assert.False(t, sink.containsStackTrace())
+	sink.Reset()
 	l.SetLevel(zapcore.DebugLevel)
 	l.Debug("debug")
 	assert.NotEmpty(t, sink.String(), 0)
+	l.Error("error")
+	assert.True(t, sink.containsStackTrace(), "no stacktrace for error level")
+	sink.Reset()
+	l.SetLevel(zapcore.InfoLevel)
+	l.Error("error")
+	assert.False(t, sink.containsStackTrace())
 }
 
 func TestWithPrometheus(t *testing.T) {
