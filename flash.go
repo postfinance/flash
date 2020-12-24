@@ -165,7 +165,7 @@ func (l *Logger) SetDebug(d bool) {
 	l.stackTrace(stackTraceLevel)
 }
 
-// Disable disables (nearly) all output.
+// Disable disables (nearly) all output. Only fatal errors are logged.
 func (l *Logger) Disable() {
 	l.m.Lock()
 	l.currentLevel = zapcore.FatalLevel
