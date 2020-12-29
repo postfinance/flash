@@ -37,10 +37,10 @@ func WithoutCaller() Option {
 	}
 }
 
-// WithSink changes the default zap `stderr` sink.
-func WithSink(name string) Option {
+// WithSinks changes the default zap `stderr` sink.
+func WithSinks(sinks ...string) Option {
 	return func(c *config) {
-		c.sink = name
+		c.sinks = sinks
 	}
 }
 
@@ -110,8 +110,8 @@ func New(opts ...Option) *Logger {
 		zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	}
 
-	if cfg.sink != "" {
-		zapConfig.OutputPaths = []string{cfg.sink}
+	if len(cfg.sinks) > 0 {
+		zapConfig.OutputPaths = cfg.sinks
 	}
 
 	var err error
@@ -212,5 +212,5 @@ type config struct {
 	disableStacktrace bool
 	isDebug           bool
 	hook              func(zapcore.Entry) error
-	sink              string
+	sinks             []string
 }

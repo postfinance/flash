@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 func TestDefault(t *testing.T) {
 	defer sink.Reset()
 
-	l := flash.New(flash.WithSink("memory://"))
+	l := flash.New(flash.WithSinks("memory://"))
 	l.Debug("debug")
 
 	e := sink.parse()
@@ -55,7 +55,7 @@ func TestDefault(t *testing.T) {
 func TestWithColor(t *testing.T) {
 	defer sink.Reset()
 
-	l := flash.New(flash.WithSink("memory://"), flash.WithColor())
+	l := flash.New(flash.WithSinks("memory://"), flash.WithColor())
 
 	l.Info("info")
 
@@ -68,7 +68,7 @@ func TestWithColor(t *testing.T) {
 func TestWithoutCaller(t *testing.T) {
 	defer sink.Reset()
 
-	l := flash.New(flash.WithSink("memory://"), flash.WithoutCaller())
+	l := flash.New(flash.WithSinks("memory://"), flash.WithoutCaller())
 	l.Info("info")
 	require.NotEmpty(t, sink.String())
 	e := sink.parse()
@@ -78,7 +78,7 @@ func TestWithoutCaller(t *testing.T) {
 func TestWithStacktraceWithDebug(t *testing.T) {
 	defer sink.Reset()
 
-	l := flash.New(flash.WithSink("memory://"), flash.WithDebug(true), flash.WithStacktrace())
+	l := flash.New(flash.WithSinks("memory://"), flash.WithDebug(true), flash.WithStacktrace())
 	l.Info("info")
 	// only stacktraces for error in debug mode
 	assert.False(t, sink.containsStackTrace(), "stack trace detected")
@@ -89,7 +89,7 @@ func TestWithStacktraceWithDebug(t *testing.T) {
 func TestSetDebugWithStacktrace(t *testing.T) {
 	defer sink.Reset()
 
-	l := flash.New(flash.WithSink("memory://"), flash.WithStacktrace())
+	l := flash.New(flash.WithSinks("memory://"), flash.WithStacktrace())
 	l.Debug("debug")
 	assert.Len(t, sink.String(), 0, "debug message logged")
 	l.Error("error")
@@ -111,7 +111,7 @@ func TestSetDebugWithStacktrace(t *testing.T) {
 func TestDisable(t *testing.T) {
 	defer sink.Reset()
 
-	l := flash.New(flash.WithSink("memory://"))
+	l := flash.New(flash.WithSinks("memory://"))
 	l.Info("info")
 	assert.NotEmpty(t, sink.String(), 0)
 	sink.Reset()
@@ -125,7 +125,7 @@ func TestDisable(t *testing.T) {
 func TestSetLevelWithStacktrace(t *testing.T) {
 	defer sink.Reset()
 
-	l := flash.New(flash.WithSink("memory://"), flash.WithStacktrace())
+	l := flash.New(flash.WithSinks("memory://"), flash.WithStacktrace())
 	l.Debug("debug")
 	assert.Empty(t, sink.String(), 0)
 	l.Error("error")
@@ -147,7 +147,7 @@ func TestWithPrometheus(t *testing.T) {
 
 	r := prometheus.NewRegistry()
 
-	l := flash.New(flash.WithSink("memory://"), flash.WithPrometheus("appname", r))
+	l := flash.New(flash.WithSinks("memory://"), flash.WithPrometheus("appname", r))
 
 	l.Info("info")
 	l.Info("info")
