@@ -5,6 +5,26 @@
 # flash
 Creates an opinionated zap logger.
 
+## Adapting it as a `logr.Logger` instance
+
+Shall you at some point need to pass a `logr.Logger` instance in your code, e.g. while writing code that uses the 
+Kubernetes client library etc., you can use `go-logr/zapr` to wrap the logger, as follows:
+
+```golang
+package main
+
+import (
+	"github.com/go-logr/zapr"
+	"github.com/postfinance/flash"
+)
+
+func main() {
+	l := flash.New()
+	z := zapr.NewLogger(l.Desugar())
+        z.V(0).Info("I'm a zap logger complying with logr.Logger interface !")
+}
+```
+
 ## Logger Without Stacktrace
 ### New Logger
 > Debug / Info / Error
