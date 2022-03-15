@@ -3,11 +3,18 @@ package flash
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
+)
+
+const (
+	lumberjackSinkURIPrefix = "lumberjack"
 )
 
 // Logger is the flash logger which embeds a `zap.SugaredLogger`.
@@ -82,6 +89,23 @@ func WithPrometheus(appName string, registry prometheus.Registerer) Option {
 	}
 }
 
+// WithFile configures the logger to log output into a file.
+func WithFile(cfg FileConfig) Option {
+	return func(c *config) {
+		c.fileConfig = &cfg
+	}
+}
+
+// FileConfig holds the configuration for logging into a file. The size is in Megabytes and
+// MaxAge is in days. If compress is true the rotated files are compressed.
+type FileConfig struct {
+	Path       string
+	MaxSize    int
+	MaxBackups int
+	MaxAge     int
+	Compress   bool
+}
+
 // New creates a new Logger. If no options are specified, stacktraces and color output are disabled and
 // the confgured level is `InfoLevel`.
 func New(opts ...Option) *Logger {
@@ -106,12 +130,21 @@ func New(opts ...Option) *Logger {
 	zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
 	zapConfig.Level = atom
 
-	if cfg.enableColor {
+	// no colors when logging to file
+	if cfg.enableColor && cfg.fileConfig == nil {
 		zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	}
 
 	if len(cfg.sinks) > 0 {
 		zapConfig.OutputPaths = cfg.sinks
+	}
+
+	if cfg.fileConfig != nil {
+		if err := cfg.registerFileSink(); err != nil {
+			panic(err)
+		}
+
+		zapConfig.OutputPaths = []string{cfg.fileConfig.sinkURI()}
 	}
 
 	var err error
@@ -213,4 +246,35 @@ type config struct {
 	isDebug           bool
 	hook              func(zapcore.Entry) error
 	sinks             []string
+	fileConfig        *FileConfig
+}
+
+func (cfg FileConfig) sinkURI() string {
+	return fmt.Sprintf("%s://localhost/%s", lumberjackSinkURIPrefix, cfg.Path)
+}
+
+func pathFromURI(u *url.URL) string {
+	return strings.Replace(u.Path, "/", "", 1)
+}
+
+type lumberjackSink struct {
+	*lumberjack.Logger
+}
+
+// Sync implements zap.Sink. The remaining methods are implemented
+// by the embedded *lumberjack.Logger.
+func (lumberjackSink) Sync() error { return nil }
+
+func (c config) registerFileSink() error {
+	return zap.RegisterSink(lumberjackSinkURIPrefix, func(u *url.URL) (zap.Sink, error) {
+		return lumberjackSink{
+			Logger: &lumberjack.Logger{
+				Filename:   pathFromURI(u),
+				MaxSize:    c.fileConfig.MaxSize,
+				MaxAge:     c.fileConfig.MaxAge,
+				MaxBackups: c.fileConfig.MaxBackups,
+				Compress:   c.fileConfig.Compress,
+			},
+		}, nil
+	})
 }

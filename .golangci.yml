@@ -3,7 +3,6 @@ run:
   tests: true
   timeout: 3m
 
-
 # all available settings of specific linters
 linters-settings:
   dupl:
@@ -60,13 +59,10 @@ linters:
     - gosimple
     - govet
     - ineffassign
-    - interfacer
-    - maligned
     - misspell
     - nakedret
     - prealloc
     - rowserrcheck
-    - scopelint # todo
     - staticcheck
     - structcheck
     - stylecheck
@@ -77,7 +73,6 @@ linters:
     - varcheck
     - whitespace
     - wsl
-
 
 issues:
   exclude:

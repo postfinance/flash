@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"reflect"
@@ -176,6 +177,26 @@ func TestWithPrometheus(t *testing.T) {
 	`
 	err = testutil.GatherAndCompare(r, strings.NewReader(metadata+expected), "appname_log_messages_total")
 	require.NoError(t, err, "unexpected collecting result")
+}
+
+func TestWithFileConfig(t *testing.T) {
+	file, err := ioutil.TempFile("", "*test.log")
+	require.NoError(t, err)
+
+	defer func() {
+		_ = file.Close()
+		_ = os.Remove(file.Name())
+	}()
+
+	l := flash.New(flash.WithFile(flash.FileConfig{
+		Path: file.Name(),
+	}))
+
+	l.Info("hello world")
+
+	d, err := os.ReadFile(file.Name())
+	require.NoError(t, err)
+	assert.Contains(t, string(d), "INFO")
 }
 
 type memorySink struct {
