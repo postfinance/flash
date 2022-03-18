@@ -1,3 +1,13 @@
+## 0.3.0 (2022-03-18)
+
+
+### New Features
+
+* **common**: add new option `WithEncoder` to configure encoder ([ca334c91](https://github.com/postfinance/flash/commit/ca334c91))
+* **common**: add support for logging into file ([dfe0daa0](https://github.com/postfinance/flash/commit/dfe0daa0))
+
+
+
 ## 0.2.0 (2020-12-29)
 
 ### Bug Fixes
