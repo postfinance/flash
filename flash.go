@@ -17,6 +17,15 @@ const (
 	lumberjackSinkURIPrefix = "lumberjack"
 )
 
+// EncoderType is a zap encoder.
+type EncoderType int
+
+// All supported encoder types.
+const (
+	Console EncoderType = iota
+	JSON
+)
+
 // Logger is the flash logger which embeds a `zap.SugaredLogger`.
 type Logger struct {
 	*zap.SugaredLogger
@@ -28,6 +37,13 @@ type Logger struct {
 
 // Option configures zap.Config.
 type Option func(c *config)
+
+// WithEncoder configures the zap encoder.
+func WithEncoder(e EncoderType) Option {
+	return func(c *config) {
+		c.encoder = e
+	}
+}
 
 // WithColor enables color output.
 func WithColor() Option {
@@ -114,21 +130,32 @@ func New(opts ...Option) *Logger {
 
 	cfg := config{
 		disableStacktrace: true,
+		encoder:           Console,
 	}
 
 	for _, opt := range opts {
 		opt(&cfg)
 	}
 
+	if cfg.encoder != Console {
+		cfg.enableColor = false
+	}
+
 	zapConfig := zap.NewProductionConfig()
 	zapConfig.DisableStacktrace = cfg.disableStacktrace
 	zapConfig.Sampling = nil
-	zapConfig.Encoding = "console"
 	zapConfig.DisableCaller = cfg.disableCaller
 	zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	zapConfig.EncoderConfig.EncodeDuration = zapcore.StringDurationEncoder
 	zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
 	zapConfig.Level = atom
+
+	switch cfg.encoder {
+	case Console:
+		zapConfig.Encoding = "console"
+	case JSON:
+		zapConfig.Encoding = "json"
+	}
 
 	// no colors when logging to file
 	if cfg.enableColor && cfg.fileConfig == nil {
@@ -247,6 +274,7 @@ type config struct {
 	hook              func(zapcore.Entry) error
 	sinks             []string
 	fileConfig        *FileConfig
+	encoder           EncoderType
 }
 
 func (cfg FileConfig) sinkURI() string {

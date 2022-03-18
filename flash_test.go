@@ -179,6 +179,19 @@ func TestWithPrometheus(t *testing.T) {
 	require.NoError(t, err, "unexpected collecting result")
 }
 
+func TestWithEncoder(t *testing.T) {
+	defer sink.Reset()
+
+	l := flash.New(flash.WithSinks("memory://"))
+	l.Infow("info")
+	assert.False(t, strings.Contains(sink.String(), "level"))
+	sink.Reset()
+
+	l = flash.New(flash.WithSinks("memory://"), flash.WithEncoder(flash.JSON))
+	l.Infow("info")
+	assert.True(t, strings.Contains(sink.String(), "level"))
+}
+
 func TestWithFileConfig(t *testing.T) {
 	file, err := ioutil.TempFile("", "*test.log")
 	require.NoError(t, err)
