@@ -3,12 +3,11 @@ package flash_test
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
-	"reflect"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -26,10 +25,10 @@ var sink *memorySink
 
 func TestMain(m *testing.M) {
 	sink = &memorySink{new(bytes.Buffer)}
+
 	err := zap.RegisterSink("memory", func(*url.URL) (zap.Sink, error) {
 		return sink, nil
 	})
-
 	if err != nil {
 		panic(err)
 	}
@@ -42,28 +41,36 @@ func TestDefault(t *testing.T) {
 
 	l := flash.New(flash.WithSinks("memory://"))
 	l.Debug("debug")
-
-	e := sink.parse()
-	assert.Len(t, e, 0, "debug message logged")
-	l.Info("info")
-
-	e = sink.parse()
-	assert.Equal(t, "INFO", e[0].level)
-	assert.Equal(t, "info", e[0].msg)
-	assert.NotEmpty(t, e[0].caller)
-}
-
-func TestWithColor(t *testing.T) {
-	defer sink.Reset()
-
-	l := flash.New(flash.WithSinks("memory://"), flash.WithColor())
+	assert.Empty(t, sink.String(), "default should not log debug messages")
 
 	l.Info("info")
 
-	const blue = `1b[34m`
+	// log entry should not be in json format since in tests we do not have a terminal
+	e, err := sink.parse()
+	require.NoError(t, err)
 
-	output := sink.String()
-	assert.True(t, strings.Contains(fmt.Sprintf("%q", output), blue))
+	assert.Equal(t, "INFO", e[0].Level)
+	assert.Equal(t, "info", e[0].Msg)
+	assert.NotEmpty(t, e[0].Caller)
+	assert.NotEmpty(t, e[0].TS)
+
+	t.Run("default console should not contain color without terminal", func(t *testing.T) {
+		sink.Reset()
+		l := flash.New(flash.WithSinks("memory://"), flash.WithEncoder(flash.Console))
+		l.Info("a log message")
+		want := fmt.Sprintf("%s\t%s\t%s", "INFO", "flash/flash_test.go:60", "a log message")
+		entry := sink.String()
+		assert.True(t, strings.Contains(entry, want), "got: %s, want:%s", entry, want)
+	})
+
+	t.Run("console output with color option should produce color output", func(t *testing.T) {
+		sink.Reset()
+		l := flash.New(flash.WithSinks("memory://"), flash.WithEncoder(flash.Console), flash.WithColor())
+		l.Info("a log message")
+
+		const blue = `1b[34m`
+		assert.True(t, strings.Contains(fmt.Sprintf("%q", sink.String()), blue))
+	})
 }
 
 func TestWithoutCaller(t *testing.T) {
@@ -72,41 +79,76 @@ func TestWithoutCaller(t *testing.T) {
 	l := flash.New(flash.WithSinks("memory://"), flash.WithoutCaller())
 	l.Info("info")
 	require.NotEmpty(t, sink.String())
-	e := sink.parse()
-	assert.Empty(t, e[0].caller)
+	e, err := sink.parse()
+	require.NoError(t, err)
+	assert.Empty(t, e[0].Caller)
 }
 
 func TestWithStacktraceWithDebug(t *testing.T) {
 	defer sink.Reset()
 
 	l := flash.New(flash.WithSinks("memory://"), flash.WithDebug(true), flash.WithStacktrace())
+
 	l.Info("info")
+
+	e, err := sink.parse()
+	require.NoError(t, err)
 	// only stacktraces for error in debug mode
-	assert.False(t, sink.containsStackTrace(), "stack trace detected")
+	assert.Empty(t, e[0].Stacktrace, "stack trace logged")
+
+	sink.Reset()
+
 	l.Error("error")
-	assert.True(t, sink.containsStackTrace(), "stack trace detected")
+
+	e, err = sink.parse()
+	require.NoError(t, err)
+	assert.NotEmpty(t, e[0].Stacktrace, "no stack trace logged")
 }
 
 func TestSetDebugWithStacktrace(t *testing.T) {
 	defer sink.Reset()
 
 	l := flash.New(flash.WithSinks("memory://"), flash.WithStacktrace())
-	l.Debug("debug")
-	assert.Len(t, sink.String(), 0, "debug message logged")
-	l.Error("error")
+
+	t.Run("it should not log stack traces on errors when not in debug mode", func(t *testing.T) {
+		l.Debug("debug")
+
+		assert.Len(t, sink.String(), 0, "debug message logged")
+
+		l.Error("error")
+
+		e, err := sink.parse()
+		require.NoError(t, err)
+
+		assert.Empty(t, e[0].Stacktrace)
+	})
+
 	sink.Reset()
-	assert.False(t, sink.containsStackTrace(), "stack trace detected")
-	l.SetDebug(true)
-	l.Debug("debug")
-	assert.NotEmpty(t, sink.String(), "no debug message logged")
-	l.Error("error")
-	assert.True(t, sink.containsStackTrace(), "stack trace detected")
+
+	t.Run("it should log stack traces on errors when in debug mode", func(t *testing.T) {
+		l.SetDebug(true)
+		l.Debug("debug")
+		assert.NotEmpty(t, sink.String(), "no debug message logged")
+
+		l.Error("error")
+
+		e, err := sink.parse()
+		require.NoError(t, err)
+
+		assert.NotEmpty(t, e[1].Stacktrace)
+	})
+
 	sink.Reset()
-	l.SetDebug(false)
-	l.Debug("debug")
-	assert.Empty(t, sink.String())
-	l.Error("error")
-	assert.False(t, sink.containsStackTrace())
+
+	t.Run("it should not log stack traces on errors when not in info mode", func(t *testing.T) {
+		l.SetDebug(false)
+		l.Error("error")
+
+		e, err := sink.parse()
+		require.NoError(t, err)
+
+		assert.Empty(t, e[0].Stacktrace)
+	})
 }
 
 func TestDisable(t *testing.T) {
@@ -127,20 +169,44 @@ func TestSetLevelWithStacktrace(t *testing.T) {
 	defer sink.Reset()
 
 	l := flash.New(flash.WithSinks("memory://"), flash.WithStacktrace())
-	l.Debug("debug")
-	assert.Empty(t, sink.String(), 0)
-	l.Error("error")
-	assert.False(t, sink.containsStackTrace())
+
+	t.Run("it should not log stack traces on errors when not in debug mode", func(t *testing.T) {
+		l.Debug("debug")
+		assert.Empty(t, sink.String(), 0)
+
+		l.Error("error")
+
+		e, err := sink.parse()
+		require.NoError(t, err)
+
+		assert.Empty(t, e[0].Stacktrace)
+	})
+
 	sink.Reset()
-	l.SetLevel(zapcore.DebugLevel)
-	l.Debug("debug")
-	assert.NotEmpty(t, sink.String(), 0)
-	l.Error("error")
-	assert.True(t, sink.containsStackTrace(), "no stacktrace for error level")
+
+	t.Run("it should log stack traces on errors when in debug mode", func(t *testing.T) {
+		l.SetLevel(zapcore.DebugLevel)
+		l.Debug("debug")
+		assert.NotEmpty(t, sink.String(), 0)
+		l.Error("error")
+
+		e, err := sink.parse()
+		require.NoError(t, err)
+
+		assert.NotEmpty(t, e[1].Stacktrace)
+	})
+
 	sink.Reset()
-	l.SetLevel(zapcore.InfoLevel)
-	l.Error("error")
-	assert.False(t, sink.containsStackTrace())
+
+	t.Run("it should not log stack traces on errors when not in info mode", func(t *testing.T) {
+		l.SetLevel(zapcore.InfoLevel)
+		l.Error("error")
+
+		e, err := sink.parse()
+		require.NoError(t, err)
+
+		assert.Empty(t, e[0].Stacktrace)
+	})
 }
 
 func TestWithPrometheus(t *testing.T) {
@@ -179,19 +245,6 @@ func TestWithPrometheus(t *testing.T) {
 	require.NoError(t, err, "unexpected collecting result")
 }
 
-func TestWithEncoder(t *testing.T) {
-	defer sink.Reset()
-
-	l := flash.New(flash.WithSinks("memory://"))
-	l.Infow("info")
-	assert.False(t, strings.Contains(sink.String(), "level"))
-	sink.Reset()
-
-	l = flash.New(flash.WithSinks("memory://"), flash.WithEncoder(flash.JSON))
-	l.Infow("info")
-	assert.True(t, strings.Contains(sink.String(), "level"))
-}
-
 func TestWithFileConfig(t *testing.T) {
 	file, err := ioutil.TempFile("", "*test.log")
 	require.NoError(t, err)
@@ -220,39 +273,28 @@ type memorySink struct {
 func (m *memorySink) Close() error { return nil }
 func (m *memorySink) Sync() error  { return nil }
 
-func (m *memorySink) parse() []entry {
+func (m *memorySink) parse() ([]logEntry, error) {
 	s := bufio.NewScanner(m)
 	s.Split(bufio.ScanLines)
 
-	entries := []entry{}
-	callerRegexp := regexp.MustCompile(`\.go:\d+`)
+	entries := []logEntry{}
 
 	for s.Scan() {
-		e := entry{}
-		fields := strings.Fields(s.Text())
-		e.level = fields[1]
-		msgIndex := 2
-
-		if callerRegexp.MatchString(fields[2]) {
-			e.caller = fields[2]
-			msgIndex++
+		e := logEntry{}
+		if err := json.Unmarshal(s.Bytes(), &e); err != nil {
+			return nil, err
 		}
 
-		e.msg = strings.Join(fields[msgIndex:], `\t`)
 		entries = append(entries, e)
 	}
 
-	return entries
+	return entries, nil
 }
 
-func (m *memorySink) containsStackTrace() bool {
-	currentPackageName := reflect.TypeOf(memorySink{}).PkgPath()
-
-	return strings.Contains(m.String(), currentPackageName)
-}
-
-type entry struct {
-	level  string
-	caller string
-	msg    string
+type logEntry struct {
+	Level      string `json:"level"`
+	TS         string `json:"ts"`
+	Caller     string `json:"caller"`
+	Msg        string `json:"msg"`
+	Stacktrace string `json:"stacktrace"`
 }
