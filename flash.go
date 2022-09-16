@@ -4,9 +4,11 @@ package flash
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 
+	"github.com/mattn/go-isatty"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -86,7 +88,8 @@ func WithStacktrace() Option {
 // WithPrometheus registers a prometheus log message counter.
 //
 // The created metrics are of the form:
-//     <appName>_log_messages_total{level="info"} 4
+//
+//	<appName>_log_messages_total{level="info"} 4
 func WithPrometheus(appName string, registry prometheus.Registerer) Option {
 	return func(c *config) {
 		counter := prometheus.NewCounterVec(
@@ -131,6 +134,12 @@ func New(opts ...Option) *Logger {
 	cfg := config{
 		disableStacktrace: true,
 		encoder:           Console,
+	}
+
+	// set encoder to json and disable color output when no terminal is detected
+	if !isatty.IsTerminal(os.Stdout.Fd()) {
+		cfg.encoder = JSON
+		cfg.enableColor = false
 	}
 
 	for _, opt := range opts {
