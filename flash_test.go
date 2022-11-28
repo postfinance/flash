@@ -72,7 +72,7 @@ func TestDefault(t *testing.T) {
 		assert.True(t, strings.Contains(fmt.Sprintf("%q", sink.String()), blue))
 	})
 
-	t.Run("default console without timestmaps", func(t *testing.T) {
+	t.Run("default console without timestamps", func(t *testing.T) {
 		sink.Reset()
 		l := flash.New(flash.WithSinks("memory://"), flash.WithEncoder(flash.Console), flash.WithoutTimestamps())
 		l.Info("a log message")

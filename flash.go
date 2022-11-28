@@ -190,6 +190,10 @@ func New(opts ...Option) *Logger {
 		zapConfig.OutputPaths = cfg.sinks
 	}
 
+	if cfg.disableTimestamps {
+		zapConfig.EncoderConfig.TimeKey = ""
+	}
+
 	if cfg.fileConfig != nil {
 		if err := cfg.registerFileSink(); err != nil {
 			panic(err)
