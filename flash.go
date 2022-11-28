@@ -10,6 +10,7 @@ import (
 
 	"github.com/mattn/go-isatty"
 	"github.com/prometheus/client_golang/prometheus"
+	zaplogfmt "github.com/sykesm/zap-logfmt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -26,6 +27,7 @@ type EncoderType int
 const (
 	Console EncoderType = iota
 	JSON
+	LogFmt
 )
 
 // Logger is the flash logger which embeds a `zap.SugaredLogger`.
@@ -115,6 +117,13 @@ func WithFile(cfg FileConfig) Option {
 	}
 }
 
+// WithoutTimestamps configures the logger to log without timestamps.
+func WithoutTimestamps() Option {
+	return func(c *config) {
+		c.disableTimestamps = true
+	}
+}
+
 // FileConfig holds the configuration for logging into a file. The size is in Megabytes and
 // MaxAge is in days. If compress is true the rotated files are compressed.
 type FileConfig struct {
@@ -137,7 +146,8 @@ func New(opts ...Option) *Logger {
 	}
 
 	// set encoder to json and disable color output when no terminal is detected
-	if !isatty.IsTerminal(os.Stdout.Fd()) {
+	// and encoder is not LogFmt
+	if !isatty.IsTerminal(os.Stdout.Fd()) && cfg.encoder != LogFmt {
 		cfg.encoder = JSON
 		cfg.enableColor = false
 	}
@@ -164,6 +174,11 @@ func New(opts ...Option) *Logger {
 		zapConfig.Encoding = "console"
 	case JSON:
 		zapConfig.Encoding = "json"
+	case LogFmt:
+		zapConfig.Encoding = "logfmt"
+		_ = zap.RegisterEncoder("logfmt", func(cfg zapcore.EncoderConfig) (zapcore.Encoder, error) {
+			return zaplogfmt.NewEncoder(cfg), nil
+		})
 	}
 
 	// no colors when logging to file
@@ -181,6 +196,10 @@ func New(opts ...Option) *Logger {
 		}
 
 		zapConfig.OutputPaths = []string{cfg.fileConfig.sinkURI()}
+	}
+
+	if cfg.disableTimestamps {
+		zapConfig.EncoderConfig.TimeKey = ""
 	}
 
 	var err error
@@ -279,6 +298,7 @@ type config struct {
 	enableColor       bool
 	disableCaller     bool
 	disableStacktrace bool
+	disableTimestamps bool
 	isDebug           bool
 	hook              func(zapcore.Entry) error
 	sinks             []string

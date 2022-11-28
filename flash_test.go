@@ -71,6 +71,13 @@ func TestDefault(t *testing.T) {
 		const blue = `1b[34m`
 		assert.True(t, strings.Contains(fmt.Sprintf("%q", sink.String()), blue))
 	})
+
+	t.Run("default console without timestmaps", func(t *testing.T) {
+		sink.Reset()
+		l := flash.New(flash.WithSinks("memory://"), flash.WithEncoder(flash.Console), flash.WithoutTimestamps())
+		l.Info("a log message")
+		assert.Equal(t, "INFO\tflash/flash_test.go:78\ta log message\n", sink.String())
+	})
 }
 
 func TestWithoutCaller(t *testing.T) {
@@ -82,6 +89,15 @@ func TestWithoutCaller(t *testing.T) {
 	e, err := sink.parse()
 	require.NoError(t, err)
 	assert.Empty(t, e[0].Caller)
+}
+
+func TestLogFmt(t *testing.T) {
+	defer sink.Reset()
+
+	l := flash.New(flash.WithSinks("memory://"), flash.WithEncoder(flash.LogFmt))
+	l.Info("info")
+	require.NotEmpty(t, sink.String())
+	fmt.Println(sink.String())
 }
 
 func TestWithStacktraceWithDebug(t *testing.T) {
