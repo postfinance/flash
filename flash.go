@@ -115,6 +115,13 @@ func WithFile(cfg FileConfig) Option {
 	}
 }
 
+// WithoutTimestamps configures the logger to log without timestamps.
+func WithoutTimestamps() Option {
+	return func(c *config) {
+		c.disableTimestamps = true
+	}
+}
+
 // FileConfig holds the configuration for logging into a file. The size is in Megabytes and
 // MaxAge is in days. If compress is true the rotated files are compressed.
 type FileConfig struct {
@@ -173,6 +180,10 @@ func New(opts ...Option) *Logger {
 
 	if len(cfg.sinks) > 0 {
 		zapConfig.OutputPaths = cfg.sinks
+	}
+
+	if cfg.disableTimestamps {
+		zapConfig.EncoderConfig.TimeKey = ""
 	}
 
 	if cfg.fileConfig != nil {
@@ -279,6 +290,7 @@ type config struct {
 	enableColor       bool
 	disableCaller     bool
 	disableStacktrace bool
+	disableTimestamps bool
 	isDebug           bool
 	hook              func(zapcore.Entry) error
 	sinks             []string

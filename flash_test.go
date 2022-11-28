@@ -71,6 +71,13 @@ func TestDefault(t *testing.T) {
 		const blue = `1b[34m`
 		assert.True(t, strings.Contains(fmt.Sprintf("%q", sink.String()), blue))
 	})
+
+	t.Run("default console without timestamps", func(t *testing.T) {
+		sink.Reset()
+		l := flash.New(flash.WithSinks("memory://"), flash.WithEncoder(flash.Console), flash.WithoutTimestamps())
+		l.Info("a log message")
+		assert.Equal(t, "INFO\tflash/flash_test.go:78\ta log message\n", sink.String())
+	})
 }
 
 func TestWithoutCaller(t *testing.T) {
