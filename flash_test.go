@@ -91,6 +91,15 @@ func TestWithoutCaller(t *testing.T) {
 	assert.Empty(t, e[0].Caller)
 }
 
+func TestLogFmt(t *testing.T) {
+	defer sink.Reset()
+
+	l := flash.New(flash.WithSinks("memory://"), flash.WithEncoder(flash.LogFmt), flash.WithoutTimestamps())
+	l.Info("info")
+	require.NotEmpty(t, sink.String())
+	assert.Equal(t, "level=INFO caller=flash/flash_test.go:98 msg=info\n", sink.String())
+}
+
 func TestWithStacktraceWithDebug(t *testing.T) {
 	defer sink.Reset()
 

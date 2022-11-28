@@ -10,6 +10,7 @@ import (
 
 	"github.com/mattn/go-isatty"
 	"github.com/prometheus/client_golang/prometheus"
+	zaplogfmt "github.com/sykesm/zap-logfmt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -26,6 +27,7 @@ type EncoderType int
 const (
 	Console EncoderType = iota
 	JSON
+	LogFmt
 )
 
 // Logger is the flash logger which embeds a `zap.SugaredLogger`.
@@ -144,7 +146,8 @@ func New(opts ...Option) *Logger {
 	}
 
 	// set encoder to json and disable color output when no terminal is detected
-	if !isatty.IsTerminal(os.Stdout.Fd()) {
+	// and encoder is not LogFmt
+	if !isatty.IsTerminal(os.Stdout.Fd()) && cfg.encoder != LogFmt {
 		cfg.encoder = JSON
 		cfg.enableColor = false
 	}
@@ -157,42 +160,8 @@ func New(opts ...Option) *Logger {
 		cfg.enableColor = false
 	}
 
-	zapConfig := zap.NewProductionConfig()
-	zapConfig.DisableStacktrace = cfg.disableStacktrace
-	zapConfig.Sampling = nil
-	zapConfig.DisableCaller = cfg.disableCaller
-	zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	zapConfig.EncoderConfig.EncodeDuration = zapcore.StringDurationEncoder
-	zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+	zapConfig := genZapConfig(cfg)
 	zapConfig.Level = atom
-
-	switch cfg.encoder {
-	case Console:
-		zapConfig.Encoding = "console"
-	case JSON:
-		zapConfig.Encoding = "json"
-	}
-
-	// no colors when logging to file
-	if cfg.enableColor && cfg.fileConfig == nil {
-		zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	}
-
-	if len(cfg.sinks) > 0 {
-		zapConfig.OutputPaths = cfg.sinks
-	}
-
-	if cfg.disableTimestamps {
-		zapConfig.EncoderConfig.TimeKey = ""
-	}
-
-	if cfg.fileConfig != nil {
-		if err := cfg.registerFileSink(); err != nil {
-			panic(err)
-		}
-
-		zapConfig.OutputPaths = []string{cfg.fileConfig.sinkURI()}
-	}
 
 	var err error
 
@@ -326,4 +295,53 @@ func (c config) registerFileSink() error {
 			},
 		}, nil
 	})
+}
+
+func genZapConfig(cfg config) zap.Config {
+	zapConfig := zap.NewProductionConfig()
+	zapConfig.DisableStacktrace = cfg.disableStacktrace
+	zapConfig.Sampling = nil
+	zapConfig.DisableCaller = cfg.disableCaller
+	zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	zapConfig.EncoderConfig.EncodeDuration = zapcore.StringDurationEncoder
+	zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+
+	switch cfg.encoder {
+	case Console:
+		zapConfig.Encoding = "console"
+	case JSON:
+		zapConfig.Encoding = "json"
+	case LogFmt:
+		zapConfig.Encoding = "logfmt"
+		_ = zap.RegisterEncoder("logfmt", func(cfg zapcore.EncoderConfig) (zapcore.Encoder, error) {
+			return zaplogfmt.NewEncoder(cfg), nil
+		})
+	}
+
+	// no colors when logging to file
+	if cfg.enableColor && cfg.fileConfig == nil {
+		zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	}
+
+	if len(cfg.sinks) > 0 {
+		zapConfig.OutputPaths = cfg.sinks
+	}
+
+	if cfg.disableTimestamps {
+		zapConfig.EncoderConfig.TimeKey = ""
+	}
+
+	if cfg.fileConfig != nil {
+		if err := cfg.registerFileSink(); err != nil {
+			panic(err)
+		}
+
+		zapConfig.OutputPaths = []string{cfg.fileConfig.sinkURI()}
+	}
+
+	if cfg.disableTimestamps {
+		zapConfig.EncoderConfig.TimeKey = ""
+	}
+
+	return zapConfig
 }
