@@ -1,3 +1,19 @@
+## 0.5.0 (2022-11-28)
+
+
+### Build System
+
+* **deps**: github.com/prometheus/client_golang 1.13.0 -> 1.14.0 ([0ce5469d](https://github.com/postfinance/flash/commit/0ce5469d))
+* **deps**: github.com/stretchr/testify 1.8.0 -> 1.8.1 ([031c78f0](https://github.com/postfinance/flash/commit/031c78f0))
+
+
+### New Features
+
+* **common**: add WithoutTimestamps option to log without timestamps ([8d69956f](https://github.com/postfinance/flash/commit/8d69956f))
+* **common**: add logfmt support ([da95c21b](https://github.com/postfinance/flash/commit/da95c21b))
+
+
+
 ## 0.4.0 (2022-09-16)
 
 
