@@ -124,6 +124,13 @@ func WithoutTimestamps() Option {
 	}
 }
 
+// WithSkipKeys configures the logger to skip keys from output.
+func WithSkipKeys(keys ...string) Option {
+	return func(c *config) {
+		c.skipKeys = keys
+	}
+}
+
 // FileConfig holds the configuration for logging into a file. The size is in Megabytes and
 // MaxAge is in days. If compress is true the rotated files are compressed.
 type FileConfig struct {
@@ -137,7 +144,6 @@ type FileConfig struct {
 // New creates a new Logger. If no options are specified, stacktraces and color output are disabled and
 // the confgured level is `InfoLevel`.
 func New(opts ...Option) *Logger {
-	l := zap.New(nil) // noop logger
 	atom := zap.NewAtomicLevelAt(zap.InfoLevel)
 
 	cfg := config{
@@ -165,7 +171,7 @@ func New(opts ...Option) *Logger {
 
 	var err error
 
-	l, err = zapConfig.Build()
+	l, err := zapConfig.Build()
 	if err != nil {
 		panic(fmt.Sprintf("could not create zap logger: %s", err))
 	}
@@ -261,6 +267,7 @@ type config struct {
 	disableStacktrace bool
 	disableTimestamps bool
 	isDebug           bool
+	skipKeys          []string
 	hook              func(zapcore.Entry) error
 	sinks             []string
 	fileConfig        *FileConfig
@@ -283,6 +290,7 @@ type lumberjackSink struct {
 // by the embedded *lumberjack.Logger.
 func (lumberjackSink) Sync() error { return nil }
 
+//nolint:gocritic // we do not care about hugeparam critic, since it is only used on creation time
 func (c config) registerFileSink() error {
 	return zap.RegisterSink(lumberjackSinkURIPrefix, func(u *url.URL) (zap.Sink, error) {
 		return lumberjackSink{
@@ -297,6 +305,7 @@ func (c config) registerFileSink() error {
 	})
 }
 
+//nolint:gocritic // we do not care about hugeparam critic, since it is only used on creation time
 func genZapConfig(cfg config) zap.Config {
 	zapConfig := zap.NewProductionConfig()
 	zapConfig.DisableStacktrace = cfg.disableStacktrace
@@ -309,13 +318,32 @@ func genZapConfig(cfg config) zap.Config {
 	switch cfg.encoder {
 	case Console:
 		zapConfig.Encoding = "console"
+		if len(cfg.skipKeys) > 0 {
+			zapConfig.Encoding = "skipconsole"
+			_ = zap.RegisterEncoder("skipconsole", func(c zapcore.EncoderConfig) (zapcore.Encoder, error) {
+				return newSkipEncoder(zapcore.NewConsoleEncoder, c, cfg.skipKeys...), nil
+			})
+		}
 	case JSON:
 		zapConfig.Encoding = "json"
+		if len(cfg.skipKeys) > 0 {
+			zapConfig.Encoding = "skipjson"
+			_ = zap.RegisterEncoder("skipjson", func(c zapcore.EncoderConfig) (zapcore.Encoder, error) {
+				return newSkipEncoder(zapcore.NewJSONEncoder, c, cfg.skipKeys...), nil
+			})
+		}
 	case LogFmt:
 		zapConfig.Encoding = "logfmt"
-		_ = zap.RegisterEncoder("logfmt", func(cfg zapcore.EncoderConfig) (zapcore.Encoder, error) {
-			return zaplogfmt.NewEncoder(cfg), nil
+		_ = zap.RegisterEncoder("logfmt", func(c zapcore.EncoderConfig) (zapcore.Encoder, error) {
+			return zaplogfmt.NewEncoder(c), nil
 		})
+
+		if len(cfg.skipKeys) > 0 {
+			zapConfig.Encoding = "skiplogfmt"
+			_ = zap.RegisterEncoder("skiplogfmt", func(c zapcore.EncoderConfig) (zapcore.Encoder, error) {
+				return newSkipEncoder(zaplogfmt.NewEncoder, c, cfg.skipKeys...), nil
+			})
+		}
 	}
 
 	// no colors when logging to file

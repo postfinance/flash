@@ -281,6 +281,94 @@ func TestWithFileConfig(t *testing.T) {
 	assert.Contains(t, string(d), "INFO")
 }
 
+func TestWithSkipKeys(t *testing.T) {
+	tests := []struct {
+		name    string
+		skip    []string
+		encoder flash.EncoderType
+		keyVals []interface{}
+		want    string
+	}{
+		{
+			name:    "json-without-skip",
+			skip:    []string{},
+			encoder: flash.JSON,
+			keyVals: []interface{}{
+				"key1", "val1",
+				"key2", "val2",
+			},
+			want: "{\"level\":\"INFO\",\"msg\":\"hello world\",\"key1\":\"val1\",\"key2\":\"val2\"}",
+		},
+		{
+			name:    "json-with-skip",
+			skip:    []string{"key1"},
+			encoder: flash.JSON,
+			keyVals: []interface{}{
+				"key1", "val1",
+				"key2", "val2",
+			},
+			want: "{\"level\":\"INFO\",\"msg\":\"hello world\",\"key2\":\"val2\"}",
+		},
+		{
+			name:    "console-without-skip",
+			skip:    []string{},
+			encoder: flash.Console,
+			keyVals: []interface{}{
+				"key1", "val1",
+				"key2", "val2",
+			},
+			want: "INFO\thello world\t{\"key1\": \"val1\", \"key2\": \"val2\"}",
+		},
+		{
+			name:    "console-with-skip",
+			skip:    []string{"key1"},
+			encoder: flash.Console,
+			keyVals: []interface{}{
+				"key1", "val1",
+				"key2", "val2",
+			},
+			want: "INFO\thello world\t{\"key2\": \"val2\"}",
+		},
+		{
+			name:    "logfmt-without-skip",
+			skip:    []string{},
+			encoder: flash.LogFmt,
+			keyVals: []interface{}{
+				"key1", "val1",
+				"key2", "val2",
+			},
+			want: `level=INFO msg="hello world" key1=val1 key2=val2`,
+		},
+		{
+			name:    "logfmt-with-skip",
+			skip:    []string{"key1"},
+			encoder: flash.LogFmt,
+			keyVals: []interface{}{
+				"key1", "val1",
+				"key2", "val2",
+			},
+			want: `level=INFO msg="hello world" key2=val2`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			sink.Reset()
+
+			l := flash.New(flash.WithSinks("memory://"),
+				flash.WithEncoder(tc.encoder),
+				flash.WithoutTimestamps(),
+				flash.WithoutCaller(),
+				flash.WithSkipKeys(tc.skip...),
+			)
+
+			l.Infow("hello world", tc.keyVals...)
+			require.Equal(t, tc.want, strings.TrimSpace(sink.String()))
+			fmt.Println(sink.String())
+		})
+	}
+}
+
 type memorySink struct {
 	*bytes.Buffer
 }
