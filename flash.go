@@ -92,11 +92,18 @@ func WithStacktrace() Option {
 // The created metrics are of the form:
 //
 //	<appName>_log_messages_total{level="info"} 4
+//
+// If appName is an empty string `flash` is used.
 func WithPrometheus(appName string, registry prometheus.Registerer) Option {
 	return func(c *config) {
+		name := appName
+		if name == "" {
+			name = "flash"
+		}
+
 		counter := prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Name: fmt.Sprintf("%s_log_messages_total", appName),
+				Name: fmt.Sprintf("%s_log_messages_total", name),
 				Help: "How many log messages created, partitioned by log level.",
 			},
 			[]string{"level"},
@@ -137,7 +144,6 @@ type FileConfig struct {
 // New creates a new Logger. If no options are specified, stacktraces and color output are disabled and
 // the confgured level is `InfoLevel`.
 func New(opts ...Option) *Logger {
-	l := zap.New(nil) // noop logger
 	atom := zap.NewAtomicLevelAt(zap.InfoLevel)
 
 	cfg := config{
@@ -165,7 +171,7 @@ func New(opts ...Option) *Logger {
 
 	var err error
 
-	l, err = zapConfig.Build()
+	l, err := zapConfig.Build()
 	if err != nil {
 		panic(fmt.Sprintf("could not create zap logger: %s", err))
 	}
