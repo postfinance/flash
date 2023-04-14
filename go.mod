@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	github.com/BurntSushi/toml v1.2.0 // indirect
-	github.com/mattn/go-isatty v0.0.16
+	github.com/mattn/go-isatty v0.0.18
 	github.com/prometheus/client_golang v1.14.0
 	github.com/stretchr/testify v1.8.1
 	github.com/sykesm/zap-logfmt v0.0.4
