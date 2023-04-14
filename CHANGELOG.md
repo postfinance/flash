@@ -1,3 +1,21 @@
+## 0.5.1 (2023-04-14)
+
+
+### Bug Fixes
+
+* **common**: use flash prometheus prefix if appName is empty ([ac6f92ac](https://github.com/postfinance/flash/commit/ac6f92ac))
+
+
+### Build System
+
+* **deps**: github.com/mattn/go-isatty 0.0.16 -> 0.0.18 ([a519e70b](https://github.com/postfinance/flash/commit/a519e70b))
+* **deps**: github.com/prometheus/client_golang 1.14.0 -> 1.15.0 ([8a64034e](https://github.com/postfinance/flash/commit/8a64034e))
+* **deps**: github.com/stretchr/testify 1.8.1 -> 1.8.2 ([5e6987d0](https://github.com/postfinance/flash/commit/5e6987d0))
+* **deps**: go.uber.org/zap 1.23.0 -> 1.24.0 ([0a1f4574](https://github.com/postfinance/flash/commit/0a1f4574))
+* **deps**: gopkg.in/natefinch/lumberjack.v2 2.0.0 -> 2.2.1 ([a42bc762](https://github.com/postfinance/flash/commit/a42bc762))
+
+
+
 ## 0.5.0 (2022-11-28)
 
 
